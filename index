@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>🌟 A1 Interactive Word Search 🌟</title>
+<style>
+  body {
+    font-family: 'Comic Sans MS', cursive;
+    background-color: #fff9ec;
+    text-align: center;
+    padding: 20px;
+  }
+  h1 {
+    color: #ff6f61;
+  }
+  #grid {
+    margin: 20px auto;
+    border-collapse: collapse;
+  }
+  #grid td {
+    width: 40px;
+    height: 40px;
+    text-align: center;
+    font-size: 24px;
+    border: 2px solid #ffc97b;
+    cursor: pointer;
+    transition: background 0.2s;
+    user-select: none;
+  }
+  #grid td.selected {
+    background-color: #ffe169;
+  }
+  #grid td.found {
+    background-color: #90ee90;
+  }
+  .word-list {
+    margin-top: 20px;
+    font-size: 18px;
+    color: #555;
+  }
+  .found-word {
+    text-decoration: line-through;
+    color: green;
+  }
+  .instructions {
+    font-size: 16px;
+    color: #444;
+    margin-bottom: 10px;
+  }
+  #victory {
+    font-size: 24px;
+    color: #ff6f61;
+    margin-top: 20px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<h1>🌟 A1 Interactive Word Search 🌟</h1>
+<p class="instructions">Enter <b>4 short words (max 5 letters each)</b>.<br>
+Words can appear <b>up, down, left, right, or diagonally</b>.<br>
+Click and drag to find words!</p>
+
+<input type="text" id="words" placeholder="e.g. cat, sun, dog, hat" style="width:300px; font-size:18px;">
+<button onclick="generate()">Generate Word Search</button>
+
+<table id="grid"></table>
+<div class="word-list" id="wordlist"></div>
+<div id="victory">🎉 Well Done! You found all the words! 🎉</div>
+
+<script>
+let gridData = [];
+let selectedCells = [];
+let isMouseDown = false;
+let words = [];
+const size = 6;
+
+// 8 directions (dx, dy)
+const directions = [
+  [1,0],  // down
+  [-1,0], // up
+  [0,1],  // right
+  [0,-1], // left
+  [1,1],  // down-right
+  [-1,-1],// up-left
+  [1,-1], // down-left
+  [-1,1]  // up-right
+];
+
+function generate() {
+  document.getElementById('victory').style.display = "none";
+
+  const input = document.getElementById('words').value.toUpperCase();
+  words = input.split(',').map(w => w.trim()).filter(Boolean);
+
+  if (words.length !== 4) {
+    alert("Please enter exactly 4 words separated by commas.");
+    return;
+  }
+  for (let word of words) {
+    if (word.length > 5) {
+      alert(`The word "${word}" is too long! Words must be 5 letters or fewer.`);
+      return;
+    }
+  }
+
+  gridData = Array.from({ length: size }, () => Array(size).fill(''));
+
+  // Place words randomly in 8 directions
+  for (let word of words) {
+    let placed = false;
+    for (let attempts = 0; attempts < 200 && !placed; attempts++) {
+      const [dx, dy] = directions[Math.floor(Math.random() * directions.length)];
+      const row = Math.floor(Math.random() * size);
+      const col = Math.floor(Math.random() * size);
+      if (canPlaceWord(word, row, col, dx, dy)) {
+        placeWord(word, row, col, dx, dy);
+        placed = true;
+      }
+    }
+  }
+
+  // Fill empty spaces with random letters
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for (let i = 0; i < size; i++) {
+    for (let j = 0; j < size; j++) {
+      if (!gridData[i][j]) {
+        gridData[i][j] = letters[Math.floor(Math.random() * letters.length)];
+      }
+    }
+  }
+
+  renderGrid();
+
+  const listDiv = document.getElementById('wordlist');
+  listDiv.innerHTML = "Find: " + words.map(w => `<span id="word-${w}">${w}</span>`).join(', ');
+}
+
+function canPlaceWord(word, row, col, dx, dy) {
+  let r = row, c = col;
+  for (let i = 0; i < word.length; i++) {
+    if (r < 0 || r >= size || c < 0 || c >= size) return false;
+    if (gridData[r][c] && gridData[r][c] !== word[i]) return false;
+    r += dx; c += dy;
+  }
+  return true;
+}
+
+function placeWord(word, row, col, dx, dy) {
+  let r = row, c = col;
+  for (let i = 0; i < word.length; i++) {
+    gridData[r][c] = word[i];
+    r += dx; c += dy;
+  }
+}
+
+function renderGrid() {
+  const table = document.getElementById('grid');
+  table.innerHTML = '';
+  for (let i = 0; i < size; i++) {
+    const tr = document.createElement('tr');
+    for (let j = 0; j < size; j++) {
+      const td = document.createElement('td');
+      td.textContent = gridData[i][j];
+      td.dataset.row = i;
+      td.dataset.col = j;
+
+      td.addEventListener('mousedown', startSelection);
+      td.addEventListener('mouseover', dragSelection);
+      td.addEventListener('mouseup', endSelection);
+
+      tr.appendChild(td);
+    }
+    table.appendChild(tr);
+  }
+  document.body.addEventListener('mouseup', () => isMouseDown = false);
+}
+
+function startSelection(e) {
+  clearSelection();
+  isMouseDown = true;
+  selectCell(e.target);
+}
+
+function dragSelection(e) {
+  if (isMouseDown) selectCell(e.target);
+}
+
+function endSelection() {
+  isMouseDown = false;
+  checkSelection();
+}
+
+function selectCell(cell) {
+  if (!cell.classList.contains('selected')) {
+    cell.classList.add('selected');
+    selectedCells.push(cell);
+  }
+}
+
+function clearSelection() {
+  selectedCells.forEach(cell => cell.classList.remove('selected'));
+  selectedCells = [];
+}
+
+function checkSelection() {
+  if (selectedCells.length === 0) return;
+  const letters = selectedCells.map(c => c.textContent).join('');
+  const reverse = letters.split('').reverse().join('');
+
+  if (words.includes(letters) || words.includes(reverse)) {
+    selectedCells.forEach(c => {
+      c.classList.remove('selected');
+      c.classList.add('found');
+    });
+    const foundWord = words.includes(letters) ? letters : reverse;
+    document.getElementById('word-' + foundWord).classList.add('found-word');
+
+    checkVictory();
+  } else {
+    clearSelection();
+  }
+}
+
+function checkVictory() {
+  const allFound = words.every(word => 
+    document.getElementById('word-' + word).classList.contains('found-word')
+  );
+  if (allFound) {
+    document.getElementById('victory').style.display = "block";
+  }
+}
+</script>
+
+</body>
+</html>
