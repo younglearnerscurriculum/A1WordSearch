@@ -6,68 +6,44 @@
   <style>
     body {
       font-family: 'Comic Sans MS', cursive;
-      background-color: #fff9ec;
+      background-color: #f0fff4;  /* soft mint */
       text-align: center;
       padding: 20px;
+      position: relative;
+      min-height: 100vh;
+      box-sizing: border-box;
     }
-    h1 {
-      color: #ff6f61;
-    }
-    #grid {
-      margin: 20px auto;
-      border-collapse: collapse;
-    }
+    h1 { color: #2e8b57; }  /* sea green */
+    #grid { margin: 20px auto; border-collapse: collapse; }
     #grid td {
       width: 40px;
       height: 40px;
       text-align: center;
       font-size: 24px;
-      border: 2px solid #ffc97b;
+      border: 2px solid #98fb98;  /* pale green */
       cursor: pointer;
       transition: background 0.2s;
       user-select: none;
     }
-    #grid td.selected {
-      background-color: #ffe169;
-    }
-    #grid td.found {
-      background-color: #90ee90;
-    }
-    .word-list {
-      margin-top: 20px;
-      font-size: 18px;
-      color: #555;
-    }
-    .found-word {
-      text-decoration: line-through;
-      color: green;
-    }
-    .instructions {
-      font-size: 16px;
-      color: #444;
-      margin-bottom: 10px;
-    }
-    #victory {
-      font-size: 24px;
-      color: #ff6f61;
-      margin-top: 20px;
-      display: none;
-    }
-    input#words {
-      text-transform: uppercase;
-    }
+    #grid td.selected { background-color: #c2f0c2; }   /* light mint */
+    #grid td.found    { background-color: #7fffd4; }   /* aquamarine */
+    .instructions { font-size: 16px; color: #444; margin-bottom: 10px; }
+    .word-list    { margin-top: 20px; font-size: 18px; color: #333; }
+    .found-word   { text-decoration: line-through; color: #2e8b57; }
+    #victory      { font-size: 24px; color: #2e8b57; margin-top: 20px; display: none; }
+    input#words   { text-transform: uppercase; }
+    footer { position: absolute; bottom: 0; width: 100%; padding: 10px 0; background: rgba(0,128,0,0.05); }
   </style>
 </head>
 <body>
-
   <h1>🌟 A1 Interactive Word Search 🌟</h1>
   <p class="instructions">
     Enter <b>4 words (max 8 letters each)</b>.<br>
-    Words can appear <b>up, down, left, right, or diagonally</b>.<br>
+    Words can appear up, down, left, right, or diagonally.<br>
     Click and drag to find words!
   </p>
 
-  <input type="text" id="words" placeholder="e.g. SUN, CAT, TREE, BOOK" style="width:300px; font-size:18px;">
+  <input type="text" id="words" placeholder="e.g. CAT, SUN, HOUSE, BOOK" style="width:350px; font-size:18px;">
   <button onclick="generate()">Generate Word Search</button>
 
   <table id="grid"></table>
@@ -79,27 +55,17 @@
       e.target.value = e.target.value.toUpperCase();
     });
 
-    let gridData = [];
-    let selectedCells = [];
-    let isMouseDown = false;
-    let words = [];
-    const size = 8;  // 8x8 board for A1 level
+    let gridData = [], selectedCells = [], isMouseDown = false, words = [];
+    const size = 8;
+    const directions = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]];
     let selectionDirection = null;
 
-    const directions = [
-      [ 1,  0], [-1,  0],  // vertical
-      [ 0,  1], [ 0, -1],  // horizontal
-      [ 1,  1], [-1, -1],  // main diagonal
-      [ 1, -1], [-1,  1]   // anti-diagonal
-    ];
-
     function generate() {
-      document.getElementById('victory').style.display = "none";
+      document.getElementById('victory').style.display = 'none';
       const input = document.getElementById('words').value;
       words = input.split(',').map(w => w.trim()).filter(Boolean);
-
       if (words.length !== 4) {
-        alert("Please enter exactly 4 words separated by commas.");
+        alert('Please enter exactly 4 words separated by commas.');
         return;
       }
       for (let w of words) {
@@ -109,21 +75,30 @@
         }
       }
 
+      // initialize grid
       gridData = Array.from({ length: size }, () => Array(size).fill(''));
+
+      // place words longest first
+      words.sort((a, b) => b.length - a.length);
 
       for (let w of words) {
         let placed = false;
-        for (let tries = 0; tries < 200 && !placed; tries++) {
+        for (let t = 0; t < 200 && !placed; t++) {
           const [dx, dy] = directions[Math.floor(Math.random() * directions.length)];
-          const row = Math.floor(Math.random() * size);
-          const col = Math.floor(Math.random() * size);
-          if (canPlaceWord(w, row, col, dx, dy)) {
-            placeWord(w, row, col, dx, dy);
+          const r = Math.floor(Math.random() * size);
+          const c = Math.floor(Math.random() * size);
+          if (canPlaceWord(w, r, c, dx, dy)) {
+            placeWord(w, r, c, dx, dy);
             placed = true;
           }
         }
+        if (!placed) {
+          alert(`Could not place word "${w}". Please try again.`);
+          return;
+        }
       }
 
+      // fill empty spaces
       const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
       for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
@@ -135,24 +110,24 @@
 
       renderGrid();
       document.getElementById('wordlist').innerHTML =
-        "Find: " + words.map(w => `<span id=\"word-${w}\">${w}</span>`).join(', ');
+        'Find: ' + words.map(w => `<span id="word-${w}">${w}</span>`).join(', ');
     }
 
-    function canPlaceWord(word, row, col, dx, dy) {
-      let r = row, c = col;
-      for (let i = 0; i < word.length; i++) {
+    function canPlaceWord(w, r, c, dx, dy) {
+      for (let i = 0; i < w.length; i++) {
         if (r < 0 || r >= size || c < 0 || c >= size) return false;
-        if (gridData[r][c] && gridData[r][c] !== word[i]) return false;
-        r += dx; c += dy;
+        if (gridData[r][c] && gridData[r][c] !== w[i]) return false;
+        r += dx;
+        c += dy;
       }
       return true;
     }
 
-    function placeWord(word, row, col, dx, dy) {
-      let r = row, c = col;
-      for (let i = 0; i < word.length; i++) {
-        gridData[r][c] = word[i];
-        r += dx; c += dy;
+    function placeWord(w, r, c, dx, dy) {
+      for (let i = 0; i < w.length; i++) {
+        gridData[r][c] = w[i];
+        r += dx;
+        c += dy;
       }
     }
 
@@ -194,26 +169,26 @@
 
     function selectCell(cell) {
       if (!cell.dataset.row || cell.classList.contains('selected')) return;
-      const r = +cell.dataset.row, c = +cell.dataset.col;
-
+      const r = +cell.dataset.row;
+      const c = +cell.dataset.col;
       if (selectedCells.length === 0) {
         cell.classList.add('selected');
         selectedCells.push(cell);
         return;
       }
-
       const first = selectedCells[0];
-      const fr = +first.dataset.row, fc = +first.dataset.col;
+      const fr = +first.dataset.row;
+      const fc = +first.dataset.col;
       const last = selectedCells[selectedCells.length - 1];
-      const lr = +last.dataset.row, lc = +last.dataset.col;
-
+      const lr = +last.dataset.row;
+      const lc = +last.dataset.col;
       if (!selectionDirection) {
-        const dr = r - fr, dc = c - fc;
+        const dr = r - fr;
+        const dc = c - fc;
         if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1 && (dr !== 0 || dc !== 0)) {
           selectionDirection = [Math.sign(dr), Math.sign(dc)];
         } else return;
       }
-
       const [dx, dy] = selectionDirection;
       if (r === lr + dx && c === lc + dy) {
         cell.classList.add('selected');
@@ -234,7 +209,6 @@
       let found = null;
       if (words.includes(str)) found = str;
       else if (words.includes(rev)) found = rev;
-
       if (found) {
         selectedCells.forEach(c => {
           c.classList.remove('selected');
@@ -248,12 +222,15 @@
     }
 
     function checkVictory() {
-      const all = words.every(w =>
-        document.getElementById('word-' + w).classList.contains('found-word')
-      );
-      if (all) document.getElementById('victory').style.display = "block";
+      if (words.every(w => document.getElementById('word-' + w).classList.contains('found-word'))) {
+        document.getElementById('victory').style.display = 'block';
+      }
     }
   </script>
 
+  <hr>
+  <footer>
+    &copy; All rights reserved Young Learners Curriculum
+  </footer>
 </body>
 </html>
