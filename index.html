@@ -15,29 +15,63 @@
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      overflow: hidden;
     }
-    h1 { color: #ff6f61; margin-bottom: 10px; }
-    #grid { margin: 0 auto 10px; border-collapse: collapse; }
+    h1 {
+      color: #ff6f61;
+      margin-bottom: 10px;
+    }
+    #grid {
+      margin: 0 auto 10px;
+      border-collapse: collapse;
+    }
     #grid td {
-      width: 40px; height: 40px; text-align: center;
-      font-size: 24px; border: 2px solid #ffc97b;
-      cursor: pointer; transition: background 0.2s; user-select: none;
+      width: 40px;
+      height: 40px;
+      text-align: center;
+      font-size: 24px;
+      border: 2px solid #ffc97b;
+      cursor: pointer;
+      transition: background 0.2s;
+      user-select: none;
     }
-    #grid td.selected { background-color: #ffe169; }
-    #grid td.found { background-color: #90ee90; }
-    .word-list { font-size: 18px; color: #555; max-width: 90%; text-align: center; }
-    .found-word { text-decoration: line-through; color: green; }
-    #victory { font-size: 24px; color: #ff6f61; margin-top: 10px; display: none; }
-    input, button { font-size: 18px; margin: 8px; padding: 5px 10px; border-radius: 6px; }
+    #grid td.selected {
+      background-color: #ffe169;
+    }
+    #grid td.found {
+      background-color: #90ee90;
+    }
+    .word-list {
+      font-size: 18px;
+      color: #555;
+      max-width: 90%;
+      text-align: center;
+    }
+    .found-word {
+      text-decoration: line-through;
+      color: green;
+    }
+    #victory {
+      font-size: 24px;
+      color: #ff6f61;
+      margin-top: 10px;
+      display: none;
+    }
+    input, button {
+      font-size: 18px;
+      margin: 8px;
+      padding: 5px 10px;
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
 
   <h1>🌟 A1 Interactive Word Search 🌟</h1>
 
-  <input type="text" id="words" placeholder="4 words, max 6 letters (e.g., CAT, HAT, SUN, DOG)" style="width:400px;">
-  <button onclick="generate()">Generate Word Search</button>
+  <div id="setup">
+    <input type="text" id="words" placeholder="DOG, SUN, CAT, HAT" style="width:350px;">
+    <button onclick="generate()">Generate Word Search</button>
+  </div>
 
   <table id="grid"></table>
   <div class="word-list" id="wordlist"></div>
@@ -48,14 +82,13 @@
     let selectedCells = [];
     let isMouseDown = false;
     let words = [];
-    const size = 8; // 8x8 grid
+    const size = 8;  // 8x8 board
     let selectionDirection = null;
 
+    // Only horizontal and vertical (no diagonals)
     const directions = [
       [ 1,  0], [-1,  0],  // vertical
-      [ 0,  1], [ 0, -1],  // horizontal
-      [ 1,  1], [-1, -1],  // main diagonal
-      [ 1, -1], [-1,  1]   // anti-diagonal
+      [ 0,  1], [ 0, -1]   // horizontal
     ];
 
     function generate() {
@@ -64,7 +97,7 @@
       words = input.split(',').map(w => w.trim()).filter(Boolean);
 
       if (words.length !== 4) {
-        alert("Please enter exactly 4 words, separated by commas.");
+        alert("Please enter exactly 4 words separated by commas.");
         return;
       }
       for (let w of words) {
@@ -74,10 +107,13 @@
         }
       }
 
-      // Initialize empty 8x8 grid
+      // Hide setup instructions after generation
+      document.getElementById('setup').style.display = "none";
+
+      // Initialize empty grid
       gridData = Array.from({ length: size }, () => Array(size).fill(''));
 
-      // Place each word
+      // Place each word (no overlap)
       for (let w of words) {
         let placed = false;
         for (let tries = 0; tries < 200 && !placed; tries++) {
@@ -88,6 +124,10 @@
             placeWord(w, row, col, dx, dy);
             placed = true;
           }
+        }
+        if (!placed) {
+          alert(`Could not place the word "${w}". Try shorter words or different words.`);
+          return;
         }
       }
 
@@ -110,7 +150,7 @@
       let r = row, c = col;
       for (let i = 0; i < word.length; i++) {
         if (r < 0 || r >= size || c < 0 || c >= size) return false;
-        if (gridData[r][c] && gridData[r][c] !== word[i]) return false;
+        if (gridData[r][c]) return false; // No overlapping
         r += dx; c += dy;
       }
       return true;
@@ -177,7 +217,8 @@
 
       if (!selectionDirection) {
         const dr = r - fr, dc = c - fc;
-        if (Math.abs(dr) <= 1 && Math.abs(dc) <= 1 && (dr !== 0 || dc !== 0)) {
+        // Check only horizontal or vertical
+        if ((dr === 0 && dc !== 0) || (dc === 0 && dr !== 0)) {
           selectionDirection = [ Math.sign(dr), Math.sign(dc) ];
         } else {
           return;
